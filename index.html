@@ -228,6 +228,9 @@
       .sidebar-panel.mobile-hidden {
         display: none;
       }
+      .map-panel.mobile-hidden {
+        display: none;
+      }
     }
   </style>
 </head>
@@ -278,15 +281,15 @@
 
   <div id="mobile-toggle" class="view-toggle">Switch View</div>
 
-  <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=places"></script>
+  <script src="https://maps.googleapis.com/maps/api/js?key=34da9fb1c392de554ed9139ce04c88e92cb946a21a5d1251fc65db89b9398a3d&libraries=places"></script>
 
   <script>
-    // System Configurations and State Setup
-    const API_BASE = 'http://localhost:3000/api';
+    const API_BASE = '/api'; 
+    
     let appState = {
       userName: '',
       chatHistory: [],
-      currentPosition: { lat: 9.4042, lng: -0.8396 } // Standard fallback to Central Tamale
+      currentPosition: { lat: 9.4042, lng: -0.8396 }
     };
 
     let map, placesService, directionsService, directionsRenderer;
@@ -307,7 +310,6 @@
       const compVal = document.getElementById('comprehension-input').value.trim();
       if(compVal === "") return alert("Please type your short answer first.");
 
-      // Post validation verification to server backend
       try {
         const res = await fetch(`${API_BASE}/onboarding`, {
           method: 'POST',
@@ -316,21 +318,19 @@
         });
         const data = await res.json();
         
-        // Output AI's validation assessment before switching to core board
         alert(data.reply);
         
         document.getElementById('user-display-name').innerText = `Pilot: ${appState.userName}`;
         document.getElementById('step-understanding').classList.add('hidden');
-        initMap(); // Instantiates physical map layouts
+        initMap(); 
       } catch (err) {
         console.error(err);
-        // Fallback bypass if connection breaks down
         document.getElementById('step-understanding').classList.add('hidden');
         initMap();
       }
     });
 
-    // Handle Mobile Presentation Layers
+    // Mobile Switchers
     document.getElementById('mobile-toggle').addEventListener('click', () => {
       const sidebar = document.getElementById('sidebar');
       const mapPanel = document.getElementById('map-workspace');
@@ -343,9 +343,7 @@
       }
     });
 
-    // Initialize Interactive Map Layer
     function initMap() {
-      // Prompt user Geolocation permissions
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition((position) => {
           appState.currentPosition = {
@@ -373,16 +371,13 @@
       directionsRenderer = new google.maps.DirectionsRenderer();
       directionsRenderer.setMap(map);
 
-      // Main pin drop for native profile
       new google.maps.Marker({
         position: appState.currentPosition,
         map: map,
-        title: "Your Location",
-        icon: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png'
+        title: "Your Location"
       });
     }
 
-    // Message sending handler
     document.getElementById('btn-send-chat').addEventListener('click', executeChatQuery);
     document.getElementById('chat-input').addEventListener('keypress', (e) => {
       if(e.key === 'Enter') executeChatQuery();
@@ -408,7 +403,6 @@
         appState.chatHistory.push({ role: 'user', content: queryText });
         appState.chatHistory.push({ role: 'assistant', content: data.reply });
 
-        // Act on mapped intents
         if (data.intent && data.intent.action !== "NONE") {
           handleMapIntent(data.intent);
         }
@@ -427,14 +421,13 @@
       chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    // Translate Core Mapping Requests
     function handleMapIntent(intent) {
       clearMarkers();
       
       if(intent.action === "SEARCH") {
         const request = {
           location: appState.currentPosition,
-          radius: '4000',
+          radius: '5000',
           keyword: intent.query
         };
         placesService.nearbySearch(request, (results, status) => {
@@ -459,9 +452,8 @@
         directionsService.route(request, (result, status) => {
           if (status === google.maps.DirectionsStatus.OK) {
             directionsRenderer.setDirections(result);
-            // Append explicit runtime text parameters 
             const legs = result.routes[0].legs[0];
-            appendMessage(`Route mapped! Distance: ${legs.distance.text} | Duration: ${legs.duration.text}`, 'assistant');
+            appendMessage(`[Route Update] Distance: ${legs.distance.text} | Duration: ${legs.duration.text}`, 'assistant');
           }
         });
       }
