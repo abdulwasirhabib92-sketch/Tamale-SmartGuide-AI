@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Intelligent Location & Navigation Web App for Tamale, Ghana",
   "main": "server.js",
+  "type": "module",
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js"
@@ -15,8 +16,5 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.0"
-  },
-  "engines": {
-    "node": ">=18.0.0"
   }
 }
