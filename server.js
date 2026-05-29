@@ -1,28 +1,29 @@
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import OpenAI from 'openai';
 
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-// Middleware
-app.use(cors());
-app.use(express.json());
-app.use(express.static('.')); // Serves index.html from root if needed
 
 // Initialize OpenAI Client
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Default Tamale fallback coordinates
-const TAMALE_COORDS = { lat: 9.4042, lng: -0.8396 };
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// Serve static frontend files directly from the root directory
+app.use(express.static(__dirname));
 
 /**
- * Route: Evaluates the onboarding response to check understanding
+ * Endpoint: Onboarding Evaluation
  */
 app.post('/api/onboarding', async (req, res) => {
   const { name, response } = req.body;
@@ -48,15 +49,15 @@ app.post('/api/onboarding', async (req, res) => {
     });
 
     const result = JSON.parse(completion.choices[0].message.content);
-    res.json(result);
+    return res.json(result);
   } catch (error) {
-    console.error('Error during onboarding evaluation:', error);
-    res.status(500).json({ error: 'Failed to process onboarding evaluation.' });
+    console.error('Onboarding Error:', error);
+    return res.status(500).json({ error: 'Failed to process onboarding validation.' });
   }
 });
 
 /**
- * Route: Main Assistant Chat and Intent Extraction 
+ * Endpoint: Main Assistant Conversational Router
  */
 app.post('/api/chat', async (req, res) => {
   const { message, history } = req.body;
@@ -70,11 +71,11 @@ app.post('/api/chat', async (req, res) => {
       You are Tamale SmartGuide AI, an expert local navigation assistant for Tamale, Northern Region, Ghana. 
       Your job is to chat naturally with users, suggest local spots, and extract map-intent tokens when they want to search locations or find routes.
       
-      When suggesting routes or places, always weave in useful Tamale safety tips (e.g., sticking to main transit lines like Tamale-Bolgatanga Road, avoiding dark alleys around industrial zones late at night, or utilizing trusted local transport).
+      When suggesting routes or places, always weave in useful Tamale safety tips (e.g., sticking to main transit lines like Tamale-Bolgatanga Road or Hospital Road, avoiding dark unlit paths behind the industrial area or isolated bypasses late at night, and utilizing trusted local transport options like registered yellow-yellow tricycles).
       
       You MUST respond with a structured JSON format containing:
       {
-        "reply": "Your natural, conversational text response to the user containing helpful advice and safety tips.",
+        "reply": "Your natural, conversational text response to the user containing helpful local advice and specific safety tips.",
         "intent": {
           "action": "SEARCH" or "ROUTE" or "NONE",
           "query": "The text search query or place type string (e.g., 'hospital', 'mosque near me', 'Tamale Central Market') if action is SEARCH or ROUTE",
@@ -85,7 +86,7 @@ app.post('/api/chat', async (req, res) => {
 
     const messages = [
       { role: 'system', content: systemPrompt },
-      ...history.slice(-6), // Keep context shallow for quick serverless performance
+      ...(history || []).slice(-6),
       { role: 'user', content: message }
     ];
 
@@ -96,14 +97,19 @@ app.post('/api/chat', async (req, res) => {
     });
 
     const parsedData = JSON.parse(completion.choices[0].message.content);
-    res.json(parsedData);
+    return res.json(parsedData);
   } catch (error) {
-    console.error('Error handling chat assistant logic:', error);
-    res.status(500).json({ error: 'Internal AI processing error.' });
+    console.error('Chat Error:', error);
+    return res.status(500).json({ error: 'Internal AI processing error.' });
   }
 });
 
-// Start listening
+// Fallback route ensures index.html is served for all generic traffic paths
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// Start application listener
 app.listen(PORT, () => {
-  console.log(`Tamale SmartGuide AI Server active on http://localhost:${PORT}`);
+  console.log(`Server executing successfully on port ${PORT}`);
 });
